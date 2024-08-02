@@ -1,0 +1,54 @@
+body {
+    background-color: #121212;
+    color: #ffffff;
+}
+
+h1, h2 {
+    color: #ffffff;
+}
+
+#videoContainer video {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+}
+
+#logBox {
+    background-color: #1c1c1c;
+    padding: 10px;
+    border: 1px solid #f00;
+    height: 100px;
+    overflow-y: auto;
+    color: #ffffff;
+    font-family: monospace;
+    font-style: italic;
+}
+
+#relatedVideos img, #bestVideos img {
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#relatedVideos img:hover, #bestVideos img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+#relatedVideosContainer .col-md-4, #bestVideosContainer .col-md-4 {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #aa313170;
+    border-color: #ff4141;
+}
+
+.btn-primary:hover {
+    background-color: #634c4c70;
+    border-color: #522e2e;
+}
+ 
