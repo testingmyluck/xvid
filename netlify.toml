@@ -2,6 +2,9 @@
   publish = "static"
   functions = "functions"
 
+[functions]
+  directory = "functions"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
