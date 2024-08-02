@@ -3,4 +3,14 @@
   functions = "functions"
 
 [functions]
-  runtime = "python"
+  directory = "functions"
+  node_bundler = "esbuild"  # This line may be necessary for handling function bundling
+
+[functions.runtime]
+  external_node_modules = []
+
+[[plugins]]
+  package = "netlify-plugin-flask"
+
+[plugins.inputs]
+  command = "gunicorn -b 0.0.0.0:$PORT functions.app:app"
