@@ -8,7 +8,7 @@
     "start": "gunicorn -b 0.0.0.0:$PORT functions.app:app"
   },
   "dependencies": {
-    "flask": "^2.0.2",
+    "flask": "^2.2.3",  // Update to a valid version
     "gunicorn": "^20.1.0"
   }
 }
