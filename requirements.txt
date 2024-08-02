@@ -1,3 +1,4 @@
-flask
+Flask
 requests
-flask_lambda
+gunicorn
+lxml
