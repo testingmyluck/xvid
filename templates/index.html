@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processor</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAACAgIABYW+gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEREQAAAAAAAREQAAAAAAAAEQAAAAAAAAARAAAAAAAAABEAAAAAAAAAEQAAAAAAAAARAAAAAAAAABEAAAAAACAAEQACAAACACARAgAgAAICAREQICAAAgIBERAgIAACACARAgAgAAAgAAAAAgAAAAAAAAAAAAAAAAAAAAAAD4HwAA/D8AAP5/AAD+fwAA/n8AAP5/AAD+fwAA/n8AAO53AADaWwAA1CsAANQrAADaWwAA7/cAAP//AAD//wAA" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Video Processor</h1>
+    <form id="videoForm" method="post">
+        <div class="form-group">
+            <label for="query">Video URL or Search Query</label>
+            <input type="text" class="form-control" id="query" name="query" placeholder="Enter video URL or search query">
+        </div>
+        <button type="submit" class="btn btn-primary">Process</button>
+    </form>
+
+    <div id="bestVideos" class="mt-3">
+        <h2>Best Videos</h2>
+        <div class="row" id="bestVideosContainer">
+            {% for video in best_videos %}
+            <div class="col-md-4">
+                <div class="thumb">
+                    <img src="{{ video.image }}" class="img-fluid" loading="lazy" data-href="{{ video.href }}">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <button id="nextPageBtn" class="btn btn-secondary mt-3">Next Page</button>
+    </div>
+
+    <div id="logBox" class="mt-3"></div>
+
+    <div id="videoContainer" class="mt-3" style="display: none;">
+        <video id="videoPlayer" controls></video>
+    </div>
+
+    <div id="relatedVideos" class="mt-3">
+        <h2>Related Videos</h2>
+        <div class="row" id="relatedVideosContainer"></div>
+    </div>
+</div>
+
+<script>
+document.getElementById('videoForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const query = document.getElementById('query').value;
+    console.log('Form submitted with query:', query);
+    
+    if (/https?:\/\/.+/.test(query)) {
+        processVideo(query);
+    } else {
+        searchBestVideos(query);
+    }
+});
+
+document.getElementById('nextPageBtn').addEventListener('click', function() {
+    let nextPageUrl = '{{ next_page_url }}';
+    console.log('Next Page button clicked. URL:', nextPageUrl);
+    nextPageUrl = nextPageUrl.replace('&amp;', '&');
+    window.location.href = nextPageUrl;
+});
+
+document.querySelectorAll('#bestVideosContainer img, #relatedVideosContainer img').forEach(img => {
+    img.addEventListener('click', function() {
+        const videoUrl = this.dataset.href;
+        console.log('Image clicked with video URL:', videoUrl);
+        processVideo(videoUrl);
+    });
+    img.addEventListener('mouseover', function() {
+        this.previewTimeout = setTimeout(() => {
+            const videoSrc = convertImageUrlToVideoPreview(this.src);
+            if (videoSrc) {
+                const video = document.createElement('video');
+                video.src = videoSrc;
+                video.autoplay = true;
+                video.loop = true;
+                video.muted = true;
+                video.width = this.width;
+                video.height = this.height;
+                video.dataset.href = this.dataset.href;
+                this.parentElement.replaceChild(video, this);
+
+                setTimeout(() => {
+                    if (video.parentElement) {
+                        video.parentElement.replaceChild(this, video);
+                    }
+                }, 6000); // 6 seconds delay
+
+                video.addEventListener('mouseout', function() {
+                    if (video.parentElement) {
+                        video.parentElement.replaceChild(img, video);
+                    }
+                });
+            }
+        }, 5000); // 5 seconds delay
+    });
+    img.addEventListener('mouseout', function() {
+        clearTimeout(this.previewTimeout);
+    });
+});
+
+function processVideo(videoUrl) {
+    console.log('Processing video with URL:', videoUrl);
+    const logBox = document.getElementById('logBox');
+    const videoContainer = document.getElementById('videoContainer');
+    const relatedVideosContainer = document.getElementById('relatedVideosContainer');
+    
+    logBox.innerHTML = 'Processing...';
+    videoContainer.innerHTML = '';
+    relatedVideosContainer.innerHTML = '';
+
+    fetch('/process', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ video_url: videoUrl })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            logBox.innerHTML = `Error: ${data.error}`;
+            console.error('Error:', data.error);
+            return;
+        }
+
+        logBox.innerHTML = data.logs.join('<br>');
+
+        if (Hls.isSupported()) {
+            const video = document.createElement('video');
+            video.id = 'videoPlayer';
+            video.controls = true;
+            videoContainer.appendChild(video);
+            videoContainer.style.display = 'block';
+
+            const hls = new Hls();
+            hls.loadSource(data.video_url);
+            hls.attachMedia(video);
+
+            // Scroll to the video player section
+            videoContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        data.image_links.forEach((imgSrc, index) => {
+            const col = document.createElement('div');
+            col.className = 'col-md-4';
+            const img = document.createElement('img');
+            img.src = imgSrc;
+            img.className = 'img-fluid';
+            img.loading = 'lazy';
+            img.dataset.href = data.hrefs[index];
+            img.addEventListener('click', () => {
+                const href = data.hrefs[index];
+                console.log('Related video clicked with href:', href);
+                processVideo(href);
+            });
+            img.addEventListener('mouseover', function() {
+                this.previewTimeout = setTimeout(() => {
+                    const videoSrc = convertImageUrlToVideoPreview(imgSrc);
+                    if (videoSrc) {
+                        const video = document.createElement('video');
+                        video.src = videoSrc;
+                        video.autoplay = true;
+                        video.loop = true;
+                        video.muted = true;
+                        video.width = img.width;
+                        video.height = img.height;
+                        video.dataset.href = img.dataset.href;
+                        col.replaceChild(video, img);
+
+                        setTimeout(() => {
+                            if (video.parentElement) {
+                                col.replaceChild(img, video);
+                            }
+                        }, 6000); // 6 seconds delay
+
+                        video.addEventListener('mouseout', function() {
+                            if (video.parentElement) {
+                                col.replaceChild(img, video);
+                            }
+                        });
+                    }
+                }, 5000); // 5 seconds delay
+            });
+            img.addEventListener('mouseout', function() {
+                clearTimeout(this.previewTimeout);
+            });
+            col.appendChild(img);
+            relatedVideosContainer.appendChild(col);
+        });
+
+        processThumbnumImages();
+    })
+    .catch(error => {
+        logBox.innerHTML = `Error: ${error.message}`;
+        console.error('Error:', error);
+    });
+}
+
+function searchBestVideos(query) {
+    console.log('Searching best videos with query:', query);
+    window.location.href = `/?k=${encodeURIComponent(query)}`;
+}
+
+function convertImageUrlToVideoPreview(imageUrl) {
+    if (!imageUrl) {
+        console.error("Error: Image URL is null or undefined.");
+        return '';
+    }
+
+    const isMinusOnePresent = imageUrl.includes('-1');
+    const isMinusTwoPresent = imageUrl.includes('-2');
+    const isMinusThreePresent = imageUrl.includes('-3');
+
+    let modifiedUrl;
+
+    if (isMinusOnePresent || isMinusTwoPresent || isMinusThreePresent) {
+        let parts;
+        if (isMinusOnePresent) {
+            parts = imageUrl.split('-1/');
+        } else if (isMinusTwoPresent) {
+            parts = imageUrl.split('-2/');
+        } else {
+            parts = imageUrl.split('-3/');
+        }
+
+        modifiedUrl = parts[0] + '_169.mp4';
+        modifiedUrl = modifiedUrl.replace(/\/thumbs[\da-zA-Z]*/, '/videopreview');
+    } else {
+        const lastSlashIndex = imageUrl.lastIndexOf('/');
+        modifiedUrl = imageUrl.substring(0, lastSlashIndex) + '_169.mp4';
+        modifiedUrl = modifiedUrl.replace(/thumbs[\da-zA-Z]*/, 'videopreview');
+    }
+
+    return modifiedUrl;
+}
+
+function processThumbnumImages() {
+    document.querySelectorAll('img').forEach(img => {
+        if (img.src.includes('THUMBNUM')) {
+            const newSrc = img.src.replace('THUMBNUM', '7');
+            console.log('Replaced THUMBNUM in image URL:', img.src, '->', newSrc);
+            img.src = newSrc;
+        }
+    });
+}
+
+</script>
+
+
+</body>
+</html>
