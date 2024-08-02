@@ -1,0 +1,14 @@
+{
+  "name": "your-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo \"Nothing to build\"",
+    "start": "gunicorn -b 0.0.0.0:$PORT functions.app:app"
+  },
+  "dependencies": {
+    "flask": "^2.0.2",
+    "gunicorn": "^20.1.0"
+  }
+}
