@@ -1,8 +1,0 @@
-[build]
-  publish = "static"
-  functions = "functions"
-
-[functions]
-  directory = "functions"
-
-# No need for [functions.runtime] unless you have specific settings
